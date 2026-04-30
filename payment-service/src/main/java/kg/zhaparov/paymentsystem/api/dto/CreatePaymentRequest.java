@@ -8,8 +8,12 @@ import java.math.BigDecimal;
 
 public record CreatePaymentRequest(
         @Schema(description = "id плательщика", example = "1")
-        @NotNull Long userId,
+        @NotNull
+        @Positive
+        Long userId,
         @Schema(description = "сумма платежа", example = "1000")
-        @Positive @NotNull BigDecimal amount
+        @NotNull
+        @Positive
+        BigDecimal amount
 ) {
 }
