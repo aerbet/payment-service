@@ -5,6 +5,7 @@ import kg.zhaparov.paymentsystem.api.dto.PaymentDto;
 import kg.zhaparov.paymentsystem.domain.db.PaymentEntity;
 import kg.zhaparov.paymentsystem.domain.db.PaymentRepository;
 import kg.zhaparov.paymentsystem.domain.db.UserRepository;
+import kg.zhaparov.paymentsystem.kafka.PaymentEventPublisher;
 import kg.zhaparov.paymentsystem.mapper.PaymentMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,15 +27,17 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
     private final RedisTemplate<String, PaymentDto> redisTemplate;
+    private final PaymentEventPublisher eventPublisher;
 
     public PaymentService(
             PaymentMapper mapper,
-            PaymentRepository paymentRepository, UserRepository userRepository, RedisTemplate<String, PaymentDto> redisTemplate
+            PaymentRepository paymentRepository, UserRepository userRepository, RedisTemplate<String, PaymentDto> redisTemplate, PaymentEventPublisher eventPublisher
     ) {
         this.paymentRepository = paymentRepository;
         this.mapper = mapper;
         this.userRepository = userRepository;
         this.redisTemplate = redisTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -48,6 +51,8 @@ public class PaymentService {
         PaymentEntity payment = new PaymentEntity(request.userId(), request.amount(), PaymentStatus.NEW);
         PaymentEntity saved = paymentRepository.save(payment);
         log.info("Payment created: id={}", saved.getId());
+
+        eventPublisher.publishPaymentCreated(saved);
 
         return mapper.entityToDto(saved);
     }
@@ -72,6 +77,9 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.SUCCEEDED);
         PaymentEntity saved = paymentRepository.save(payment);
         log.info("Payment has been confirmed: id={}", id);
+
+        eventPublisher.publishPaymentSucceeded(saved);
+
         redisTemplate.delete(id.toString());
         return mapper.entityToDto(saved);
     }
