@@ -7,8 +7,10 @@ import kg.zhaparov.paymentsystem.domain.db.PaymentRepository;
 import kg.zhaparov.paymentsystem.mapper.PaymentMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 
@@ -31,6 +33,9 @@ public class PaymentService {
 
     @Transactional
     public PaymentDto createPayment(CreatePaymentRequest request) {
+        if (request.amount().compareTo(MAX_AMOUNT) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You've reached the maximum amount.");
+        }
         PaymentEntity payment = new PaymentEntity(request.userId(), request.amount(), PaymentStatus.NEW);
         PaymentEntity saved = paymentRepository.save(payment);
         log.info("Payment created: id={}", saved.getId());
@@ -45,6 +50,9 @@ public class PaymentService {
 
     public PaymentDto confirmPayment(Long id) {
         PaymentEntity payment = findPaymentOrThrow(id);
+        if (payment.getStatus() != PaymentStatus.NEW) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment status must be NEW");
+        }
         payment.setStatus(PaymentStatus.SUCCEEDED);
         PaymentEntity saved = paymentRepository.save(payment);
         log.info("Payment has been confirmed: id={}", id);
@@ -54,6 +62,8 @@ public class PaymentService {
 
     private PaymentEntity findPaymentOrThrow(Long id) {
         return paymentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Payment with id=" + id + " not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Payment with id=" + id + " not found")
+                );
     }
 }
