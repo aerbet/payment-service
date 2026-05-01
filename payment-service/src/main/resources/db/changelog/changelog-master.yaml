@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      author: erbol_zhaparov
+      file: classpath:db/changelog/sql/001-create-payments.sql
+  - include:
+      author: erbol_zhaparov
+      file: classpath:db/changelog/sql/002-create-users.sql
